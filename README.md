@@ -1,11 +1,3 @@
-# react-10
-Ustozning fikridan ko'rinib turibdi: Backend qismini juda zo'r bajargansiz (Flask, SQLAlchemy, JWT va CORS ideal ishlayapti), lekin Frontend qismi repo'da umuman yo'qligi va commitlar kamligi sababli balingiz yetmay qolgan.
-
-Xafa bo'lishga o'rin yo'q — eng murakkab joyi (Backend) tayyor! Endi Frontend'ni qo'shib, repository'ni chiroyli tartibga keltirsak, 90+ balni bemalol olasiz.
-
-🚀 Reja va Amalga Oshirish Bosqichlari
-Loyiha uchun berilgan 21 kunlik muddat doirasida topshiriqni 100% ga yetkazish uchun quyidagi qadamlarni tartib bilan bajaramiz:
-
 1. Repository Strukturasini To'g'rilash (Monorepo)
 Loyiha papkasida frontend va backend'ni alohida ajrating:
 
@@ -275,3 +267,199 @@ git add src/App.jsx
 git commit -m "feat: configure React Router with protected routes structure"
 Frontend qismini yozishni nimadan boshlaymiz?
 Agar xohlasangiz, AuthContext, useFetch hook'i yoki Routing strukturasining tayyor kod shablonini birgalikda tuzishdan boshlashimiz mumkin. Qaysi biridan boshlaymiz?
+Davom etamiz! Poydevor tayyor bo'lgach, endi Dark Mode Context, React.memo bilan optimizatsiya qilingan komponentlar hamda Forma va UI sahifalarini yaratamiz.
+
+1. Dark Mode Context (src/context/ThemeContext.jsx)
+Mavzuni (yorug'/qorong'i) saqlash va butun ilova bo'ylab boshqarish uchun:
+
+JavaScript
+import { createContext, useContext, useEffect } from 'react';
+import { useLocalStorage } from '../hooks/useLocalStorage';
+
+const ThemeContext = createContext();
+
+export const ThemeProvider = ({ children }) => {
+  const [theme, setTheme] = useLocalStorage('app_theme', 'light');
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  };
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};
+
+export const useTheme = () => useContext(ThemeContext);
+2. React.memo bilan Optimizatsiya qilingan Komponent (src/components/RecipeCard.jsx)
+Qayta keraksiz render'larning oldini olish uchun React.memo ishlatamiz:
+
+JavaScript
+import React from 'react';
+import { Link } from 'react-router-dom';
+
+const RecipeCard = React.memo(({ recipe, onFavoriteToggle, isFavorite }) => {
+  return (
+    <div className="recipe-card">
+      <img src={recipe.image_url || '/placeholder.jpg'} alt={recipe.title} />
+      <h3>{recipe.title}</h3>
+      <p>{recipe.category}</p>
+      <div className="actions">
+        <Link to={`/recipes/${recipe.id}`}>Batafsil</Link>
+        <button onClick={() => onFavoriteToggle(recipe.id)}>
+          {isFavorite ? '❤️' : '🤍'}
+        </button>
+      </div>
+    </div>
+  );
+});
+
+export default RecipeCard;
+3. Controlled Form & Login Sahifasi (src/pages/Login.jsx)
+Boshqariladigan shakl (controlled form) va JWT token olish qismi:
+
+JavaScript
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+export default function Login() {
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Kirishda xatolik yuz berdi');
+
+      login(data.user, data.token);
+      navigate('/profile');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="auth-container">
+      <h2>Tizimga kirish</h2>
+      {error && <p className="error-message">{error}</p>}
+      <form onSubmit={handleSubmit}>
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+        />
+        <input
+          type="password"
+          name="password"
+          placeholder="Parol"
+          value={formData.password}
+          onChange={handleChange}
+          required
+        />
+        <button type="submit" disabled={loading}>
+          {loading ? 'Kirilmoqda...' : 'Kirish'}
+        </button>
+      </form>
+    </div>
+  );
+}
+4. Retseptlar Sahifasi (src/pages/Recipes.jsx)
+Qidiruv (Debounce), Conditional Rendering va Pagination bilan:
+
+JavaScript
+import { useState } from 'react';
+import { useFetch } from '../hooks/useFetch';
+import { useDebounce } from '../hooks/useDebounce';
+import RecipeCard from '../components/RecipeCard';
+
+export default function Recipes() {
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const debouncedSearch = useDebounce(search, 500);
+
+  const { data, loading, error } = useFetch(
+    `http://localhost:5000/api/recipes?q=${debouncedSearch}&page=${page}`
+  );
+
+  return (
+    <div className="recipes-page">
+      <input
+        type="text"
+        placeholder="Retsept qidirish..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+
+      {/* Conditional Rendering */}
+      {loading && <div>Yuklanmoqda...</div>}
+      {error && <div className="error">Xatolik: {error}</div>}
+      {data && data.recipes.length === 0 && <div>Hech narsa topilmadi</div>}
+
+      <div className="recipe-grid">
+        {data?.recipes.map((recipe) => (
+          <RecipeCard key={recipe.id} recipe={recipe} />
+        ))}
+      </div>
+
+      {/* Sahifalash (Pagination) */}
+      <div className="pagination">
+        <button onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page === 1}>
+          Oldingi
+        </button>
+        <span>{page}</span>
+        <button onClick={() => setPage((p) => p + 1)} disabled={!data?.has_next}>
+          Keyingi
+        </button>
+      </div>
+    </div>
+  );
+}
+📌 Navbatdagi Git Commit'lar:
+Ushbu fayllarni yarating va alohida commit'lar yuboring:
+
+Bash
+git add src/context/ThemeContext.jsx
+git commit -m "feat: add ThemeContext for dark/light mode toggle"
+
+git add src/components/RecipeCard.jsx
+git commit -m "feat: add RecipeCard component with React.memo optimization"
+
+git add src/pages/Login.jsx
+git commit -m "feat: add Login page with controlled form and JWT fetch"
+
+git add src/pages/Recipes.jsx
+git commit -m "feat: add Recipes list page with debounce search and pagination"
