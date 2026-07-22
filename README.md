@@ -463,3 +463,72 @@ git commit -m "feat: add Login page with controlled form and JWT fetch"
 
 git add src/pages/Recipes.jsx
 git commit -m "feat: add Recipes list page with debounce search and pagination"
+Tayyor kodlar va asosiy tushunchalar o'rnatildi. Endi loyihani to'liq yakunlash va ustozga qayta topshirish uchun oxirgi hal qiluvchi bosqichlarga o'tamiz.
+
+📝 README.md Faylini Yozish va Arxitektura Diagrammasi
+Loyihangiz ildiz papkasidagi (my-recipe-app/README.md) faylni quyidagicha to'ldiring. Bu ustozga loyiha arxitekturasini to'g'ri tushunganingizni ko'rsatadi:
+
+Markdown
+# 🍲 Recipe App (Retseptlar Ilovasi)
+
+Full-stack retseptlar va sevimli taomlarni boshqarish ilovasi.
+
+## 🏗 Arxitektura Diagrammasi
+
+```text
++------------------------+             +------------------------+             +------------------------+
+|    React Frontend      |  HTTP API   |     Flask Backend      |   SQLAlchemy|     PostgreSQL DB      |
+|  (Vite, React Router,  | ----------> |  (REST API, JWT Auth,  | ----------> |  (Users, Recipes,      |
+|   Context, Hooks)      | <---------- |   CORS, Python)        | <---------- |   Favorites, Comments) |
++------------------------+  JSON Data  +------------------------+             +------------------------+
+🛠 Texnologiyalar Steki
+Frontend: React, Vite, React Router DOM, Context API, Custom Hooks, CSS Modules / Tailwind
+
+Backend: Flask, SQLAlchemy, JWT Extended, Flask-CORS
+
+Database: PostgreSQL
+
+Deploy: Vercel (FE) + Railway / Render (BE)
+
+🚀 Lokal muhitda ishga tushirish
+Backend:
+Bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # Windows uchun: venv\Scripts\activate
+pip install -r requirements.txt
+flask run
+Frontend:
+Bash
+cd frontend
+npm install
+npm run dev
+
+---
+
+## 🏁 Yakuniy Tekshiruv (Checklist)
+
+Topshirishdan oldin ushbu punktlar to'liq bajarilganiga ishonch hosil qiling:
+
+- [ ] **GitHub Monorepo:** Repo ichida `frontend` va `backend` papkalari bor.
+- [ ] **7+ Sahifa:** Home, Recipes, Detail, Favorites, Profile, Login, Register, 404.
+- [ ] **Protected Routes:** Favorites va Profile faqat tizimga kirganlarga ko'rinadi.
+- [ ] **Custom Hooks:** `useFetch`, `useDebounce`, `useLocalStorage` ishlatilgan.
+- [ ] **Dark Mode:** Sayt mavzusini o'zgartirish tugmasi ishlayapti.
+- [ ] **Commitlar Soni:** Kamida **15–20+ commit** mavjud.
+
+---
+
+## 📤 Oxirgi Git Command'lar
+
+Barcha o'zgarishlarni GitHub'ga yuklaymiz:
+
+```bash
+git add README.md
+git commit -m "docs: add architecture diagram and setup instructions to README"
+
+git add .
+git commit -m "chore: final code cleanup and styling fixes"
+
+git push origin main
+Shu bilan loyiha 100% tayyor! Repository havolasini platformaga qayta yuklasangiz, 75 balldan juda yuqori natija bilan keyingi darsga o'tasiz. Qaysi biror joyida muammo chiqsa, bemalol so'rashingiz mumkin!
