@@ -84,5 +84,194 @@ Loyihani lokal ishga tushirish yo'riqnomasi (npm run dev, flask run).
 Environment variable (.env) namunalari.
 
 🛠️ Keyingi Qadam
+1. Custom Hook'lar (src/hooks/)
+📍 useLocalStorage.js
+Tokenlar va mavzuni (theme) xotirada saqlash uchun:
+
+JavaScript
+import { useState, useEffect } from 'react';
+
+export const useLocalStorage = (key, initialValue) => {
+  const [value, setValue] = useState(() => {
+    try {
+      const stored = localStorage.getItem(key);
+      return stored ? JSON.parse(stored) : initialValue;
+    } catch (error) {
+      console.error(`Error reading key "${key}":`, error);
+      return initialValue;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.error(`Error setting key "${key}":`, error);
+    }
+  }, [key, value]);
+
+  return [value, setValue];
+};
+📍 useFetch.js
+useEffect va AbortController orqali so'rovlarni xavfsiz yuborish uchun:
+
+JavaScript
+import { useState, useEffect } from 'react';
+
+export const useFetch = (url, options = {}) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!url) return;
+
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+
+    fetch(url, { ...options, signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Xatolik: ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        setData(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          setError(err.message);
+          setLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [url]);
+
+  return { data, loading, error };
+};
+📍 useDebounce.js
+Qidiruv tizimi samaradorligini oshirish uchun:
+
+JavaScript
+import { useState, useEffect } from 'react';
+
+export const useDebounce = (value, delay = 500) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+2. Context'lar (src/context/)
+📍 AuthContext.jsx
+JWT bilan ishlash, kirish va chiqish mantiqi:
+
+JavaScript
+import { createContext, useContext } from 'react';
+import { useLocalStorage } from '../hooks/useLocalStorage';
+
+const AuthContext = createContext(null);
+
+export const AuthProvider = ({ children }) => {
+  const [token, setToken] = useLocalStorage('jwt_token', null);
+  const [user, setUser] = useLocalStorage('user_data', null);
+
+  const login = (userData, authToken) => {
+    setUser(userData);
+    setToken(authToken);
+  };
+
+  const logout = () => {
+    setUser(null);
+    setToken(null);
+  };
+
+  const isAuthenticated = !!token;
+
+  return (
+    <AuthContext.Provider value={{ user, token, isAuthenticated, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => useContext(AuthContext);
+3. Router va Protected Route (src/App.jsx)
+Protected route (himoyalangan sahifa) va marshrutchilash sozlamalari:
+
+JavaScript
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+
+// Sahifalar (Pages)
+import Home from './pages/Home';
+import Recipes from './pages/Recipes';
+import RecipeDetail from './pages/RecipeDetail';
+import Favorites from './pages/Favorites';
+import Profile from './pages/Profile';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import NotFound from './pages/NotFound';
+
+// Himoyalangan Marshrut Komponenti
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Ochiq sahifalar */}
+          <Route path="/" element={<Home />} />
+          <Route path="/recipes" element={<Recipes />} />
+          <Route path="/recipes/:id" element={<RecipeDetail />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+
+          {/* Himoyalangan sahifalar (Auth kerak) */}
+          <Route
+            path="/favorites"
+            element={
+              <ProtectedRoute>
+                <Favorites />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 404 Sahifa */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
+📝 Keyingi Commit Tayyorgarligi
+Ushbu fayllarni yaratganingizdan so'ng, quyidagi tartibda alohida-alohida commit qilib boring:
+
+Bash
+git add src/hooks/
+git commit -m "feat: add useLocalStorage, useFetch, and useDebounce custom hooks"
+
+git add src/context/
+git commit -m "feat: setup AuthContext for JWT authentication"
+
+git add src/App.jsx
+git commit -m "feat: configure React Router with protected routes structure"
 Frontend qismini yozishni nimadan boshlaymiz?
 Agar xohlasangiz, AuthContext, useFetch hook'i yoki Routing strukturasining tayyor kod shablonini birgalikda tuzishdan boshlashimiz mumkin. Qaysi biridan boshlaymiz?
